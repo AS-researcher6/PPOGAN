@@ -375,48 +375,59 @@ while G_progress < niter*len(dataloader):
         ############################
         # (2) Update G network: maximize D(G(z))
         ###########################
-        j = 0
-        with torch.no_grad():
-            D0 = (D(fake.data)).data
-            P0 = (1.-D0)/torch.clamp(D0, min = 1e-7)
-
-        while j < CONF['PPO_iters'] and i < len(dataloader):
+        # j = 0
+        # with torch.no_grad():
+        #     D0 = (D(fake.data)).data
+        #     P0 = (1.-D0)/torch.clamp(D0, min = 1e-7)
+        
+        if i < len(dataloader):
             data = data_iter.next()
-            i += 1
-            j += 1
-            D.zero_grad()
-            real_tmp = data[0].to(device)
-            batch_size = real_tmp.size(0)
-            label = torch.full((batch_size,), real_label, device=device)
-            output = D(real_tmp)
-            errDD_real = criterion(output, label)
-            errDD_real.backward()
-            label.fill_(fake_label)
             Noise = torch.randn(batch_size, nz, device=device)
-            fake = netG(Noise)
-            output = D(fake.detach())
-            errDD_fake = criterion(output, label)
-            errDD_fake.backward()
-            nn.utils.clip_grad_norm_(D.parameters(), CONF['max_grad_norm'])
-            optimizerD_D.step()
             netG.zero_grad()
-            fake = netG(noise)
-            D1 = D(netG(noise))
-            P1 = (1.-D1)
-            ratio = (P1/torch.clamp(D1*P0, min = 1e-7))
+            fake = netG(Noise)
             adv_targ, _ = netD(fake)
-            surr1 = ratio * adv_targ
-            ratio_clipped = torch.clamp(ratio, 1.0 - CONF['clip_param'], 1.0 + CONF['clip_param'])
-            surr2 = ratio_clipped * adv_targ
-            target = torch.where(adv_targ>0, torch.min(surr1, surr2), torch.max(surr1, surr2))
             errG = target.mean()
             errG.backward(mone)
             D_G_z2 = errG.item()
             optimizerG.step()
-            writer.add_histogram('R_{}'.format(j), ratio.data.cpu().numpy(), global_step=G_progress)
-            writer.add_histogram('R_clip_{}'.format(j), ratio_clipped.data.cpu().numpy(), global_step=G_progress)
-            writer.add_histogram('Adv_{}'.format(j), adv_targ.data.cpu().numpy(), global_step=G_progress)
-            writer.add_histogram('L_{}'.format(j), target.data.cpu().numpy(), global_step=G_progress)
+        
+        # while j < CONF['PPO_iters'] and i < len(dataloader):
+        #     data = data_iter.next()
+        #     i += 1
+        #     j += 1
+        #     D.zero_grad()
+        #     real_tmp = data[0].to(device)
+        #     batch_size = real_tmp.size(0)
+        #     label = torch.full((batch_size,), real_label, device=device)
+        #     output = D(real_tmp)
+        #     errDD_real = criterion(output, label)
+        #     errDD_real.backward()
+        #     label.fill_(fake_label)
+        #     Noise = torch.randn(batch_size, nz, device=device)
+        #     fake = netG(Noise)
+        #     output = D(fake.detach())
+        #     errDD_fake = criterion(output, label)
+        #     errDD_fake.backward()
+        #     nn.utils.clip_grad_norm_(D.parameters(), CONF['max_grad_norm'])
+        #     optimizerD_D.step()
+        #     netG.zero_grad()
+        #     fake = netG(noise)
+        #     D1 = D(netG(noise))
+        #     P1 = (1.-D1)
+        #     ratio = (P1/torch.clamp(D1*P0, min = 1e-7))
+        #     adv_targ, _ = netD(fake)
+        #     surr1 = ratio * adv_targ
+        #     ratio_clipped = torch.clamp(ratio, 1.0 - CONF['clip_param'], 1.0 + CONF['clip_param'])
+        #     surr2 = ratio_clipped * adv_targ
+        #     target = torch.where(adv_targ>0, torch.min(surr1, surr2), torch.max(surr1, surr2))
+        #     errG = target.mean()
+        #     errG.backward(mone)
+        #     D_G_z2 = errG.item()
+        #     optimizerG.step()
+        #     writer.add_histogram('R_{}'.format(j), ratio.data.cpu().numpy(), global_step=G_progress)
+        #     writer.add_histogram('R_clip_{}'.format(j), ratio_clipped.data.cpu().numpy(), global_step=G_progress)
+        #     writer.add_histogram('Adv_{}'.format(j), adv_targ.data.cpu().numpy(), global_step=G_progress)
+        #     writer.add_histogram('L_{}'.format(j), target.data.cpu().numpy(), global_step=G_progress)
 
         writer.add_scalar("Loss_D", errD.item(), global_step=G_progress)
         writer.add_scalar("Loss_G", errG.item(), global_step=G_progress)
