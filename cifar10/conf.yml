@@ -1,6 +1,6 @@
 BS: 64
 D_SCALE: 1.3
-DataRoot: /DataSet/
+DataRoot: ./DataSet/
 Diters: 5
 Dset: cifar10
 Factor_M: 0
